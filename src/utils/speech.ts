@@ -1,5 +1,12 @@
 // Speech Synthesis (Text to Speech) and Speech Recognition helpers
 
+// Pre-load voices for Android Chrome
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+  };
+}
+
 export function speakText(
   text: string,
   lang: 'en-US' | 'he-IL' = 'en-US',
@@ -20,24 +27,39 @@ export function speakText(
   utterance.rate = Math.max(0.6, Math.min(rate, 1.2)); // safe range for senior listening
   utterance.pitch = 1.0;
 
-  // Try to find a warm, natural voice if available
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length > 0) {
-    const targetVoice = voices.find(
-      (v) => v.lang.startsWith(lang.split('-')[0]) && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Siri'))
-    ) || voices.find((v) => v.lang.startsWith(lang.split('-')[0]));
+  // Try to find a warm, natural voice if available (Android / iOS / Chrome)
+  const getAndSetVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      const targetVoice =
+        voices.find(
+          (v) =>
+            v.lang.startsWith(lang.split('-')[0]) &&
+            (v.name.includes('Natural') ||
+              v.name.includes('Google') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Karen') ||
+              v.name.includes('Siri'))
+        ) || voices.find((v) => v.lang.startsWith(lang.split('-')[0]));
 
-    if (targetVoice) {
-      utterance.voice = targetVoice;
+      if (targetVoice) {
+        utterance.voice = targetVoice;
+      }
     }
-  }
+  };
+
+  getAndSetVoice();
 
   if (onEnd) {
     utterance.onend = () => onEnd();
     utterance.onerror = () => onEnd();
   }
 
-  window.speechSynthesis.speak(utterance);
+  // Small timeout to prevent Android Chrome audio cancel race condition
+  setTimeout(() => {
+    window.speechSynthesis.speak(utterance);
+  }, 30);
+
   return true;
 }
 
@@ -47,7 +69,7 @@ export function stopSpeaking() {
   }
 }
 
-// Browser Speech Recognition Wrapper
+// Browser Speech Recognition Wrapper (Supports Android WebKit Speech Recognition)
 export interface SpeechRecognitionResultHandler {
   onResult: (transcript: string) => void;
   onError: (errorMsg: string) => void;
@@ -60,7 +82,10 @@ export class VoiceRecognizer {
   constructor(lang: 'en-US' | 'he-IL' = 'en-US') {
     if (typeof window !== 'undefined') {
       const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition ||
+        (window as any).mozSpeechRecognition ||
+        (window as any).msSpeechRecognition;
 
       if (SpeechRecognition) {
         this.recognition = new SpeechRecognition();
@@ -84,14 +109,16 @@ export class VoiceRecognizer {
 
     try {
       this.recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        handlers.onResult(transcript);
+        if (event.results && event.results[0] && event.results[0][0]) {
+          const transcript = event.results[0][0].transcript;
+          handlers.onResult(transcript);
+        }
       };
 
       this.recognition.onerror = (event: any) => {
         let msg = 'לא הצלחנו לשמוע בבירור, נסי שוב עלית!';
         if (event.error === 'no-speech') msg = 'לא נשמע דיבור, לחצי שוב על המיקרופון.';
-        if (event.error === 'not-allowed') msg = 'נדרש אישור גישה למיקרופון בדפדפן.';
+        if (event.error === 'not-allowed') msg = 'נדרש אישור גישה למיקרופון בדפדפן הנייד.';
         handlers.onError(msg);
       };
 
@@ -116,3 +143,4 @@ export class VoiceRecognizer {
     }
   }
 }
+

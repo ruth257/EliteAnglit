@@ -92,28 +92,8 @@ export const VoiceCompanion: React.FC<VoiceCompanionProps> = ({ stats, addStars 
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
-    let aiResponseData;
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userSpeech: userInput,
-          contextTopic: 'friendly conversation for 80yo Elit'
-        })
-      });
-
-      if (res.ok) {
-        aiResponseData = await res.json();
-      } else {
-        // Fallback to local cached response dictionary
-        aiResponseData = getCachedAIResponse(userInput);
-      }
-    } catch (err) {
-      console.warn('API route unavailable, using local cached engine:', err);
-      aiResponseData = getCachedAIResponse(userInput);
-    }
+    // Use client-side pre-cached AI response generator (no server required)
+    const aiResponseData = getCachedAIResponse(userInput);
 
     const aiMsg: ChatMessage = {
       id: `ai-${Date.now()}`,
@@ -331,13 +311,13 @@ export const VoiceCompanion: React.FC<VoiceCompanionProps> = ({ stats, addStars 
       </div>
 
       {/* Main Microphone Interaction Dock (Extra Big for Seniors!) */}
-      <div className="sticky bottom-4 bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-[40px] border-8 border-amber-300 shadow-2xl flex flex-col items-center gap-5">
+      <div className="sticky bottom-2 sm:bottom-4 bg-white/95 backdrop-blur-md p-4 sm:p-8 rounded-[28px] sm:rounded-[40px] border-4 sm:border-8 border-amber-300 shadow-2xl flex flex-col items-center gap-3 sm:gap-5 my-2 sm:my-4 z-20">
         <div className="text-center">
-          <p className="text-stone-900 font-black text-xl sm:text-2xl font-serif">
+          <p className="text-stone-900 font-black text-lg sm:text-2xl font-serif">
             לחצי על המיקרופון ודברי באנגלית אל סוזי:
           </p>
-          <p className="text-amber-800 font-bold text-base mt-1">
-            לא נורא אם יש טעויות - הכל בכיף ובאהבה!
+          <p className="text-amber-800 font-bold text-xs sm:text-base mt-0.5">
+            לא נורא אם יש טעויות - הכל בכיף ובסבלנות!
           </p>
         </div>
 
