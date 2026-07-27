@@ -111,7 +111,7 @@ export default function App() {
       {/* Senior-Friendly Footer */}
       <footer className="border-t-4 border-amber-200 bg-amber-100 py-8 text-center text-stone-800 text-base mt-12">
         <p className="font-serif font-black text-amber-950 text-xl mb-1">
-          עלית לומדת אנגלית 🍫 טוב לי עם עלית
+          עלית לומדת אנגלית 🍫
         </p>
         <p className="text-sm font-bold text-amber-900">
           ללא קריאה וללא כתיבה - לימוד קולי בלבד בכיף, בסבלנות ובחיוך
