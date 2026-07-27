@@ -33,11 +33,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build site
-        run: npx vite build
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      - name: Build site
+        run: npx vite build
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

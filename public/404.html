@@ -5,13 +5,12 @@
     <title>עלית לומדת אנגלית 🍫 טוב לי עם עלית</title>
     <script>
       // Single Page Apps for GitHub Pages
-      // Redirect 404 back to root index.html with relative path
-      var segmentCount = 0;
+      var pathSegmentsToKeep = 1; // Keep 1 segment for repository name (/EliteAnglit/)
       var l = window.location;
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?p=' +
-        l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
         (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
         l.hash
       );
