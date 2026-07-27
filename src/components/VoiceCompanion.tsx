@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage, UserStats } from '../types';
 import { speakText, VoiceRecognizer, stopSpeaking } from '../utils/speech';
+import { getCachedAIResponse } from '../data/cachedResponses';
 import { Mic, Volume2, Sparkles, RefreshCw, VolumeX, Send, ArrowLeft, Heart, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -10,22 +11,34 @@ interface VoiceCompanionProps {
 }
 
 export const VoiceCompanion: React.FC<VoiceCompanionProps> = ({ stats, addStars }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'init-1',
-      sender: 'ai',
-      english: 'Hello Elit! I am Sarah, your English friend. How are you today?',
-      hebrewTranslation: 'שלום עלית! אני שרה, החברה שלך לאנגלית. מה שלומך היום?',
-      hebrewTransliteration: 'הֶלוֹ עָלִית! איי אם סָרָה, יוּר אִינְגְלִישׁ פרֶנְד. הָאוּ אָר יוּ טוֹדֵיי?',
-      encouragementHebrew: 'שלום עלית היקרה! איזה כיף להתחיל לדבר ביחד! 🌟',
-      suggestedOptions: [
-        { english: 'I am fine, thank you!', hebrew: 'אני מרגישה טוב, תודה!', transliteration: 'איי אם פיין, תֶּנְק יוּ!' },
-        { english: 'Good morning, Sarah!', hebrew: 'בוקר טוב, שרה!', transliteration: 'גּוּד מוֹרְנִינְגּ, סָרָה!' },
-        { english: 'I want a cup of tea, please.', hebrew: 'אני רוצה כוס תה, בבקשה.', transliteration: 'איי וּוּד לַייק אָ קַאפּ אוֹף טִי, פְּלִיז.' }
-      ],
-      timestamp: Date.now()
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('elit_chat_history');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          // fallback
+        }
+      }
     }
-  ]);
+    return [
+      {
+        id: 'init-1',
+        sender: 'ai',
+        english: 'Hello Elit! I am Sarah, your English friend. How are you today?',
+        hebrewTranslation: 'שלום עלית! אני שרה, החברה שלך לאנגלית. מה שלומך היום?',
+        hebrewTransliteration: 'הֶלוֹ עָלִית! איי אם סָרָה, יוּר אִינְגְלִישׁ פרֶנְד. הָאוּ אָר יוּ טוֹדֵיי?',
+        encouragementHebrew: 'טוב לי עם עלית! 🍫 איזה כיף להתחיל לדבר ביחד!',
+        suggestedOptions: [
+          { english: 'I am fine, thank you!', hebrew: 'אני מרגישה טוב, תודה!', transliteration: 'איי אם פיין, תֶּנְק יוּ!' },
+          { english: 'Good morning, Sarah!', hebrew: 'בוקר טוב, שרה!', transliteration: 'גּוּד מוֹרְנִינְגּ, סָרָה!' },
+          { english: 'I want a cup of tea, please.', hebrew: 'אני רוצה כוס תה, בבקשה.', transliteration: 'איי וּוּד לַייק אָ קַאפּ אוֹף טִי, פְּלִיז.' }
+        ],
+        timestamp: Date.now()
+      }
+    ];
+  });
 
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +50,10 @@ export const VoiceCompanion: React.FC<VoiceCompanionProps> = ({ stats, addStars 
   useEffect(() => {
     recognizerRef.current = new VoiceRecognizer('en-US');
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('elit_chat_history', JSON.stringify(messages));
+  }, [messages]);
 
   useEffect(() => {
     // Auto speak the initial greeting on mount
@@ -75,6 +92,8 @@ export const VoiceCompanion: React.FC<VoiceCompanionProps> = ({ stats, addStars 
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
+    let aiResponseData;
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -85,39 +104,44 @@ export const VoiceCompanion: React.FC<VoiceCompanionProps> = ({ stats, addStars 
         })
       });
 
-      const data = await res.json();
-
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        english: data.english || 'Great job Elit!',
-        hebrewTranslation: data.hebrewTranslation || 'כל הכבוד עלית!',
-        hebrewTransliteration: data.hebrewTransliteration || 'גְרֵייט גְ\'וֹב עָלִית!',
-        encouragementHebrew: data.encouragementHebrew || 'מקסימה עלית! 🌟',
-        suggestedOptions: data.suggestedOptions || [
-          { english: 'Thank you very much!', hebrew: 'תודה רבה רבה!', transliteration: 'תֶּנְק יוּ וֶורִי מָאץ\'!' },
-          { english: 'Have a nice day!', hebrew: 'שיהיה לך יום נעים!', transliteration: 'הֶבְ אָ נַייְס דֵיי!' }
-        ],
-        timestamp: Date.now()
-      };
-
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsLoading(false);
-
-      // Trigger reward
-      addStars(2);
-      try {
-        confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
-      } catch (e) {
-        // ignore
+      if (res.ok) {
+        aiResponseData = await res.json();
+      } else {
+        // Fallback to local cached response dictionary
+        aiResponseData = getCachedAIResponse(userInput);
       }
-
-      // Auto play Sarah's audio
-      handlePlayAudio(aiMsg.english, aiMsg.id);
     } catch (err) {
-      setIsLoading(false);
-      console.error('Chat error:', err);
+      console.warn('API route unavailable, using local cached engine:', err);
+      aiResponseData = getCachedAIResponse(userInput);
     }
+
+    const aiMsg: ChatMessage = {
+      id: `ai-${Date.now()}`,
+      sender: 'ai',
+      english: aiResponseData.english || 'Great job Elit!',
+      hebrewTranslation: aiResponseData.hebrewTranslation || 'כל הכבוד עלית!',
+      hebrewTransliteration: aiResponseData.hebrewTransliteration || 'גְרֵייט גְ\'וֹב עָלִית!',
+      encouragementHebrew: aiResponseData.encouragementHebrew || 'טוב לי עם עלית! 🍫',
+      suggestedOptions: aiResponseData.suggestedOptions || [
+        { english: 'Thank you very much!', hebrew: 'תודה רבה רבה!', transliteration: 'תֶּנְק יוּ וֶורִי מָאץ\'!' },
+        { english: 'Have a nice day!', hebrew: 'שיהיה לך יום נעים!', transliteration: 'הֶבְ אָ נַייְס דֵיי!' }
+      ],
+      timestamp: Date.now()
+    };
+
+    setMessages((prev) => [...prev, aiMsg]);
+    setIsLoading(false);
+
+    // Trigger reward
+    addStars(2);
+    try {
+      confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 } });
+    } catch (e) {
+      // ignore
+    }
+
+    // Auto play Suzy's audio
+    handlePlayAudio(aiMsg.english, aiMsg.id);
   };
 
   const startVoiceInput = () => {

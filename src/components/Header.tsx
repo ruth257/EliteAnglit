@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
                 עלית לומדת אנגלית
               </h1>
               <p className="text-sm sm:text-base text-amber-800 font-bold">
-                שיחה, אוצר מילים והיגוי בקול בלבד 💛
+                שיחה, אוצר מילים והיגוי בקול בלבד 🍫 טוב לי עם עלית
               </p>
             </div>
           </div>
