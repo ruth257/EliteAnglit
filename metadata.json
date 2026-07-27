@@ -1,0 +1,6 @@
+{
+  "name": "עלית לומדת אנגלית",
+  "description": "אפליקציה חווייתית וקולית ללימוד אנגלית מדוברת, אוצר מילים והיגוי עבור עלית",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
